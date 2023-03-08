@@ -58,14 +58,37 @@ def parse_fragment(
     return res
 
 
+def parse_single(
+    source: Union[qltokenizer.Source, str],
+    filename: Optional[str]=None,
+) -> qlast.Expr:
+    if isinstance(source, str):
+        source = qltokenizer.Source.from_string(source)
+    parser = qlparser.EdgeQLSingleParser()
+    res = parser.parse(source, filename=filename)
+    assert isinstance(res, qlast.Expr)
+    return res
+
+
 def parse(
     source: Union[qltokenizer.Source, str],
     module_aliases: Optional[Mapping[Optional[str], str]] = None,
+    as_expr: bool = True,
 ) -> qlast.Expr:
-    tree = parse_fragment(source)
+    """Parse some EdgeQL potentially adding some module aliases.
 
-    if not isinstance(tree, qlast.Command):
-        tree = qlast.SelectQuery(result=tree)
+    Overwhelmingly this is used to parse expressions and queries. However,
+    sometimes this is used to parse DDL as well. For those occasions the
+    `as_expr` should be set to False.
+    """
+
+    if as_expr:
+        tree = parse_fragment(source)
+        if not isinstance(tree, qlast.Command):
+            tree = qlast.SelectQuery(result=tree)
+
+    else:
+        tree = parse_single(source)
 
     if module_aliases:
         append_module_aliases(tree, module_aliases)
@@ -97,6 +120,7 @@ def preload(
     if parsers is None:
         parsers = [
             qlparser.EdgeQLBlockParser(),
+            qlparser.EdgeQLSingleParser(),
             qlparser.EdgeQLExpressionParser(),
             qlparser.EdgeSDLParser(),
         ]

@@ -7835,7 +7835,7 @@ class TestDescribe(tb.BaseSchemaLoadTest):
         tests = [iter(tests)] * 2
 
         for stmt_text, expected_output in zip(*tests):
-            qltree = qlparser.parse(stmt_text, {None: 'test'})
+            qltree = qlparser.parse(stmt_text, {None: 'test'}, as_expr=False)
             stmt = qlcompiler.compile_ast_to_ir(
                 qltree,
                 schema,
