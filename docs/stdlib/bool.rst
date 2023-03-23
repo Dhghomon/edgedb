@@ -34,6 +34,8 @@ Booleans
     * - :eql:func:`any`
       - :eql:func-desc:`any`
 
+    * - :eql:func:`assert`
+      - :eql:func-desc:`assert`
 
 ----------
 
@@ -220,3 +222,61 @@ any(a) or any(b)``.
 
 For more customized handling of ``{}``, use the :eql:op:`?? <coalesce>`
 operator.
+
+
+----------
+
+
+.. eql:function:: std::assert( \
+                    input: bool, \
+                    named only message: optional str = <str>{} \
+                  ) -> bool
+
+    .. versionadded:: 3.0
+
+    Checks that the input bool is ``true``.
+
+    If the input bool is ``false``, ``assert`` raises a
+    ``QueryAssertionError``.  Otherwise, this function returns ``true``.
+
+    .. code-block:: edgeql-repl
+
+        db> select assert(true);
+        {true}
+
+        db> select assert(false);
+        edgedb error: QueryAssertionError: assertion failed
+
+        db> select assert(false, message := 'value is not true');
+        edgedb error: QueryAssertionError: value is not true
+
+    In the following examples, the ``size`` properties of the ``File`` objects
+    are ``1024``, ``1024``, and ``131,072``.
+
+    .. code-block:: edgeql-repl
+
+        db> for obj in (select File)
+        ... union (assert(obj.size <= 128*1024, message := 'file too big'));
+        {true, true, true}
+
+        db> for obj in (select File)
+        ... union (assert(obj.size <= 64*1024, message := 'file too big'));
+        edgedb error: QueryAssertionError: file too big
+
+    You may also call ``assert`` in the ``order by`` clause to get the results
+    of a ``select`` rather than the results of the ``assert`` in the event the
+    assertion passes for each object in the result set:
+
+    .. code-block:: edgeql-repl
+
+        db> select File { name, size }
+        ... order by assert(.size <= 128*1024, message := "file too big");
+        {
+          default::File {name: 'File 2', size: 1024},
+          default::File {name: 'Asdf 3', size: 1024},
+          default::File {name: 'File 1', size: 131072},
+        }
+
+        db> select File { name, size }
+        ... order by assert(.size <= 64*1024, message := "file too big");
+        edgedb error: QueryAssertionError: file too big
